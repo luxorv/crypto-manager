@@ -1,9 +1,3 @@
-"""
-    Script to calculate amount of time to get to a particular car goal or
-      to see how many cars would you have in a particular amount of time
- 
-    In order to customize the parameters change the variables bellow
-"""
 
 def run_calc():
     car_goal = 30
