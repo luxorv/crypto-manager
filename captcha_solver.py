@@ -139,7 +139,6 @@ class CaptchaSolver:
             self.btn_class = ".btn-red"
             self.load_more_selector = '//span[text()="Load More"]'
             self.close_button = "[aria-label='Close']"
-            self.rewards_section = '.rewards-body'
 
     def load_all_nfts(self):
         while True:
