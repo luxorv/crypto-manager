@@ -1,11 +1,12 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.support.expected_conditions import presence_of_element_located, presence_of_all_elements_located
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support.expected_conditions import element_to_be_clickable, presence_of_element_located
 from twocaptcha import TwoCaptcha
 
+import os
 import time
 import subprocess
 
@@ -38,19 +39,35 @@ def save_captcha(form, captcha_name):
     image_element.screenshot(captcha_name)
 
 
+def remove_images():
+    for file in os.listdir('images/'):
+        if file.endswith('.png'):
+            os.remove('images/' + file)
+
+
+def print_rewards_for_the_day(rewards_for_the_day):
+    total = sum(rewards_for_the_day)
+    print("Rewards for the {} with an average of {}".format(total, int(total / len(rewards_for_the_day))))
+
+
 class CaptchaSolver:
     def __init__(self, driver, game):
+        self.toaster_selector = '.toasted.error'
         self.driver = driver
-        self.btn_class = ".btn-green"
+        self.start_btn = ".btn-green"
+        self.confirm_btn = ".btn-green"
         self.load_more_selector = '//button[text()="Load More"]'
-        self.close_button = '.close-btn'
+        self.rewards_section = '.farm'
+        self.close_button = "[aria-label='Close']"
         self.start_buttons = []
         self.nft_fuel_spans = []
+        self.rewards_for_the_day = []
+        self.game = game
 
         api_key = '83e92dace76375a049e6ffd331721ec2'
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
-        self.init_page_selectors_by_game(game)
+        self.init_page_selectors_by_game()
 
     def solve_captchas(self):
         self.load_all_nfts()
@@ -61,36 +78,43 @@ class CaptchaSolver:
         vertical_scroll = self.get_vertical_scroll()
 
         self.get_nft_fuel_elements()
+        self.rewards_for_the_day = [0 for _ in range(len(self.start_buttons))]
         self.start_buttons = enumerate(self.start_buttons)
 
         for index, button in self.start_buttons:
             remaining, total = get_current_nft_fuel(self.nft_fuel_spans[index].text)
             while remaining > 0:
-                print("Current car fuel {}/{}; {} times remaining".format(remaining, total, (remaining/15)))
+                print("Current nft fuel {}/{}; {} time(s) remaining".format(remaining, total, (remaining / 15)))
                 self.click_start_button(button, vertical_scroll)
                 try:
                     form = self.driver.find_element(By.XPATH, '//form')
-                    captcha_name = 'captcha{}.png'.format(index)
+                    captcha_name = 'images/captcha{}.png'.format(index)
                     save_captcha(form, captcha_name)
-                    self.input_answer_into_form(form, captcha_name)
-                    time.sleep(40)
-                    self.close_modal()
+                    solved = self.input_answer_into_form(form, captcha_name)
+                    if solved:
+                        self.close_modal(index)
                 except Exception as e:
-                    print("something went wrong while solving captchas {}".format(e.message))
+                    print("something went wrong while solving captchas {}".format(e))
 
                 remaining, total = get_current_nft_fuel(self.nft_fuel_spans[index].text)
 
+        print_rewards_for_the_day(self.rewards_for_the_day)
+        remove_images()
+
     def input_answer_into_form(self, form, captcha_name):
         answer = self.solve_single_captcha(captcha_name)
+
         form.find_element(By.XPATH, '//input').send_keys(answer["code"])
-        form.find_element(By.CSS_SELECTOR, self.btn_class).click()
+        form.find_element(By.CSS_SELECTOR, self.confirm_btn).click()
+
+        return self.failed_toaster_exists()
 
     def solve_single_captcha(self, captcha_name):
         result = None
         try:
             result = self.solver.normal(captcha_name)
             print(result["code"])
-        except Exception as e:
+        except Exception:
             print("could not solve captcha")
         return result
 
@@ -105,11 +129,23 @@ class CaptchaSolver:
         window_size = self.driver.get_window_size()
         return int(window_size["height"] / amount_of_rows)
 
-    def close_modal(self):
-        close_btns = self.driver.find_elements(By.CSS_SELECTOR, "[aria-label='Close']")
-        if len(close_btns):
-            close_btns[-1].click()
-            time.sleep(1)
+    def close_modal(self, index):
+        try:
+            close_btns = WebDriverWait(self.driver, 40).until(
+                presence_of_all_elements_located((By.CSS_SELECTOR, self.close_button))
+            )
+            if len(close_btns):
+                close_btns[-1].click()
+                self.rewards_for_the_day[index] += self.get_rewards_from_html()
+                time.sleep(1)
+        except TimeoutException:
+            print("can't find the close button")
+
+    def get_rewards_from_html(self):
+        if 'planes' in self.game:
+            return self.get_rewards_from_planes()
+        else:
+            return self.get_rewards_from_cars()
 
     def get_nft_fuel_elements(self):
         all_nft_fuel_spans = self.driver.find_elements(By.XPATH, '//span[text()="Fuel: "]')
@@ -120,7 +156,7 @@ class CaptchaSolver:
                 self.nft_fuel_spans.append(fuel_span)
 
     def filter_nfts_to_run(self):
-        all_start_buttons = self.driver.find_elements(By.CSS_SELECTOR, self.btn_class)
+        all_start_buttons = self.driver.find_elements(By.CSS_SELECTOR, self.start_btn)
 
         for button in all_start_buttons:
             if "start" in button.text.lower() and button.is_enabled():
@@ -134,25 +170,56 @@ class CaptchaSolver:
         button.click()
         time.sleep(1)
 
-    def init_page_selectors_by_game(self, game):
-        if "planes" in game:
-            self.btn_class = ".btn-red"
+    def init_page_selectors_by_game(self):
+        if "planes" in self.game:
+            self.start_btn = ".btn-red"
+            self.confirm_btn = ".btn-green"
             self.load_more_selector = '//span[text()="Load More"]'
-            self.close_button = "[aria-label='Close']"
+            self.close_button = '.btn-blue'
 
     def load_all_nfts(self):
         while True:
             try:
-                load_more = self.driver.find_element(By.XPATH, self.load_more_selector)
+                load_more = WebDriverWait(self.driver, 3).until(
+                    presence_of_element_located((By.XPATH, self.load_more_selector))
+                )
                 load_more.location_once_scrolled_into_view
                 time.sleep(2)
                 load_more.click()
-            except NoSuchElementException:
+            except TimeoutException:
                 break
 
     def scroll_to_top(self):
         self.driver.execute_script("window.scroll(0, 0);")
         time.sleep(1)
 
+    def failed_toaster_exists(self):
+        toaster = None
+        try:
+            toaster = WebDriverWait(self.driver, 3, ignored_exceptions=NoSuchElementException).until(
+                presence_of_element_located((By.CSS_SELECTOR, self.toaster_selector))
+            )
+        except TimeoutException:
+            print("can't find the toaster")
+        return toaster is None or "invalid" not in toaster.text.lower()
 
-solve_captchas("cars", '/usr/bin/google-chrome')
+    def get_rewards_from_planes(self):
+        reward_btn = self.driver.find_element(By.CSS_SELECTOR, self.close_button)
+        reward_html = reward_btn.get_attribute('innerHTML')
+
+        if 'CPAN' not in reward_html:
+            return 0
+
+        rewards = reward_html.split('>')[1:]
+        for section in rewards:
+            if 'CPAN' in section:
+                return float(section.split('CPAN')[0].strip())
+
+        return 0
+
+    def get_rewards_from_cars(self):
+        pass
+
+
+if __name__ == '__main__':
+    solve_captchas("planes", '/usr/bin/google-chrome')

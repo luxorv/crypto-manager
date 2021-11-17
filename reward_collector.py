@@ -125,4 +125,5 @@ class RewardCollector:
                 current_reward.click()
 
 
-collect_game_rewards("cars", '/usr/bin/google-chrome')
+if __name__ == '__main__':
+    collect_game_rewards("cars", '/usr/bin/google-chrome')
