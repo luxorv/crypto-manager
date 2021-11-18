@@ -63,6 +63,13 @@ class CaptchaSolver:
         self.nft_fuel_spans = []
         self.rewards_for_the_day = []
         self.game = game
+        self.reward_map = {
+            '1st': 10.0,
+            '2nd': 7.5,
+            '3rd': 5.0,
+            '4th': 3.5,
+            '5th': 0.0
+        }
 
         api_key = '83e92dace76375a049e6ffd331721ec2'
 
@@ -218,8 +225,11 @@ class CaptchaSolver:
         return 0
 
     def get_rewards_from_cars(self):
-        pass
+        reward_section = self.driver.find_element(By.CSS_SELECTOR, '.result-success')
+        reward_place = reward_section.get_attribute('innerHTML')
+        print(reward_place)
+        return self.reward_map[reward_place.lower()]
 
 
 if __name__ == '__main__':
-    solve_captchas("planes", '/usr/bin/google-chrome')
+    solve_captchas("cars", '/usr/bin/google-chrome')
