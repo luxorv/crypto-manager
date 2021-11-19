@@ -6,6 +6,10 @@ from selenium.common.exceptions import NoSuchElementException
 import time
 import subprocess
 
+from selenium.webdriver.support.expected_conditions import presence_of_element_located
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+
 
 def collect_game_rewards(game, chrome_path):
     subprocess.Popen(
@@ -20,7 +24,6 @@ def collect_game_rewards(game, chrome_path):
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(url)
     driver.maximize_window()
-    driver.implicitly_wait(10)
 
     rewards_collector = RewardCollector(driver, game)
     rewards_collector.collect_rewards()
@@ -39,16 +42,17 @@ class RewardCollector:
         self.init_page_selectors_by_game(game)
 
     def collect_rewards(self):
+        self.driver.implicitly_wait(4)
         self.load_all_nfts()
         self.scroll_to_top()
         self.get_all_claimable_rewards()
-
-        vertical_scroll = self.get_vertical_scroll()
         self.reward_buttons = enumerate(self.reward_buttons)
 
         for index, button in self.reward_buttons:
             for num in range(2):
-                self.click_reward_button(button, vertical_scroll)
+                self.set_vertical_scroll(button)
+                time.sleep(1)
+                button.click()
                 try:
                     all_rewards = self.driver.find_element(By.CSS_SELECTOR, self.rewards_section)
                     claim_buttons = all_rewards.find_elements(By.CSS_SELECTOR, self.btn_class)
@@ -59,16 +63,10 @@ class RewardCollector:
 
                 self.close_modal()
 
-    def get_vertical_scroll(self):
-        amount_of_nfts = len(self.reward_buttons)
-        amount_of_rows = amount_of_nfts / 3
-        remainder = amount_of_nfts % 3
-
-        if remainder != 0:
-            amount_of_rows += 1
-
-        window_size = self.driver.get_window_size()
-        return int(window_size["height"] / amount_of_rows)
+    def set_vertical_scroll(self, button):
+        height = self.driver.get_window_size()['height']
+        vertical_location = button.location['y'] - (height/2)
+        self.driver.execute_script("window.scrollTo(0, {});".format(vertical_location))
 
     def close_modal(self):
         try:
@@ -86,14 +84,6 @@ class RewardCollector:
             if "rewards" in button.text.lower():
                 self.reward_buttons.append(button)
 
-    def click_reward_button(self, button, vertical_scroll):
-        button.location_once_scrolled_into_view
-        time.sleep(1)
-        self.driver.execute_script("window.scrollTo(0, window.scrollY - " + str(vertical_scroll) + ")")
-        time.sleep(1)
-        button.click()
-        time.sleep(1)
-
     def init_page_selectors_by_game(self, game):
         if "planes" in game:
             self.btn_class = ".btn-yellow"
@@ -104,11 +94,13 @@ class RewardCollector:
     def load_all_nfts(self):
         while True:
             try:
-                load_more = self.driver.find_element(By.XPATH, self.load_more_selector)
+                load_more = WebDriverWait(self.driver, 3).until(
+                    presence_of_element_located((By.XPATH, self.load_more_selector))
+                )
                 load_more.location_once_scrolled_into_view
                 time.sleep(2)
                 load_more.click()
-            except NoSuchElementException:
+            except TimeoutException:
                 break
 
     def scroll_to_top(self):
@@ -126,4 +118,4 @@ class RewardCollector:
 
 
 if __name__ == '__main__':
-    collect_game_rewards("cars", '/usr/bin/google-chrome')
+    collect_game_rewards("planes", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')

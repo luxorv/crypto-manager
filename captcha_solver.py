@@ -40,9 +40,9 @@ def save_captcha(form, captcha_name):
 
 
 def remove_images():
-    for file in os.listdir('images/'):
+    for file in os.listdir('./'):
         if file.endswith('.png'):
-            os.remove('images/' + file)
+            os.remove(file)
 
 
 def print_rewards_for_the_day(rewards_for_the_day):
@@ -78,12 +78,9 @@ class CaptchaSolver:
 
     def solve_captchas(self):
         self.load_all_nfts()
-        self.driver.implicitly_wait(40)
         self.scroll_to_top()
+        self.driver.implicitly_wait(40)
         self.filter_nfts_to_run()
-
-        vertical_scroll = self.get_vertical_scroll()
-
         self.get_nft_fuel_elements()
         self.rewards_for_the_day = [0 for _ in range(len(self.start_buttons))]
         self.start_buttons = enumerate(self.start_buttons)
@@ -92,10 +89,12 @@ class CaptchaSolver:
             remaining, total = get_current_nft_fuel(self.nft_fuel_spans[index].text)
             while remaining > 0:
                 print("Current nft fuel {}/{}; {} time(s) remaining".format(remaining, total, (remaining / 15)))
-                self.click_start_button(button, vertical_scroll)
+                self.set_vertical_scroll(button)
+                time.sleep(1)
+                button.click()
                 try:
                     form = self.driver.find_element(By.XPATH, '//form')
-                    captcha_name = 'images/captcha{}.png'.format(index)
+                    captcha_name = 'captcha{}.png'.format(index)
                     save_captcha(form, captcha_name)
                     solved = self.input_answer_into_form(form, captcha_name)
                     if solved:
@@ -110,6 +109,10 @@ class CaptchaSolver:
 
     def input_answer_into_form(self, form, captcha_name):
         answer = self.solve_single_captcha(captcha_name)
+        print(answer)
+        if not answer:
+            self.close_captcha_modal()
+            return False
 
         form.find_element(By.XPATH, '//input').send_keys(answer["code"])
         form.find_element(By.CSS_SELECTOR, self.confirm_btn).click()
@@ -120,21 +123,14 @@ class CaptchaSolver:
         result = None
         try:
             result = self.solver.normal(captcha_name)
-            print(result["code"])
-        except Exception:
+        except TimeoutException:
             print("could not solve captcha")
         return result
 
-    def get_vertical_scroll(self):
-        amount_of_nfts = len(self.start_buttons)
-        amount_of_rows = amount_of_nfts / 3
-        remainder = amount_of_nfts % 3
-
-        if remainder != 0:
-            amount_of_rows += 1
-
-        window_size = self.driver.get_window_size()
-        return int(window_size["height"] / amount_of_rows)
+    def set_vertical_scroll(self, button):
+        height = self.driver.get_window_size()['height']
+        vertical_location = button.location['y'] - (height/2)
+        self.driver.execute_script("window.scrollTo(0, {});".format(vertical_location))
 
     def close_modal(self, index):
         try:
@@ -168,14 +164,6 @@ class CaptchaSolver:
         for button in all_start_buttons:
             if "start" in button.text.lower() and button.is_enabled():
                 self.start_buttons.append(button)
-
-    def click_start_button(self, button, vertical_scroll):
-        button.location_once_scrolled_into_view
-        time.sleep(1)
-        self.driver.execute_script("window.scrollTo(0, window.scrollY - " + str(vertical_scroll) + ")")
-        time.sleep(1)
-        button.click()
-        time.sleep(1)
 
     def init_page_selectors_by_game(self):
         if "planes" in self.game:
@@ -230,6 +218,14 @@ class CaptchaSolver:
         print(reward_place)
         return self.reward_map[reward_place.lower()]
 
+    def close_captcha_modal(self):
+        buttons = self.driver.find_elements(By.CSS_SELECTOR, '.btn-red')
+
+        for button in buttons:
+            if 'cancel' in button.text.lower():
+                button.click()
+                time.sleep(1)
+
 
 if __name__ == '__main__':
-    solve_captchas("cars", '/usr/bin/google-chrome')
+    solve_captchas("planes", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
