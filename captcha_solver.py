@@ -6,6 +6,8 @@ from selenium.webdriver.support.expected_conditions import presence_of_element_l
 from selenium.webdriver.support.wait import WebDriverWait
 from twocaptcha import TwoCaptcha
 
+from models.nft import NFT, get_current_nft_fuel
+
 import os
 import time
 import subprocess
@@ -30,10 +32,6 @@ def solve_captchas(game, chrome_path):
     driver.close()
 
 
-def get_current_nft_fuel(fuel_text):
-    return (int(num) for num in fuel_text.split(':')[1].strip().split('/'))
-
-
 def save_captcha(form, captcha_name):
     image_element = form.find_element(By.XPATH, "//*[local-name() = 'svg']")
     image_element.screenshot(captcha_name)
@@ -45,11 +43,6 @@ def remove_images():
             os.remove(file)
 
 
-def print_rewards_for_the_day(rewards_for_the_day):
-    total = sum(rewards_for_the_day)
-    print("Rewards for the {} with an average of {}".format(total, int(total / len(rewards_for_the_day))))
-
-
 class CaptchaSolver:
     def __init__(self, driver, game):
         self.toaster_selector = '.toasted.error'
@@ -59,10 +52,14 @@ class CaptchaSolver:
         self.load_more_selector = '//button[text()="Load More"]'
         self.rewards_section = '.farm'
         self.close_button = "[aria-label='Close']"
-        self.start_buttons = []
-        self.nft_fuel_spans = []
-        self.rewards_for_the_day = []
+        self.nfts = []
         self.game = game
+
+        api_key = '83e92dace76375a049e6ffd331721ec2'
+
+        self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
+        self.init_page_selectors_by_game()
+
         self.reward_map = {
             '1st': 10.0,
             '2nd': 7.5,
@@ -71,40 +68,33 @@ class CaptchaSolver:
             '5th': 0.0
         }
 
-        api_key = '<your-key-here>'
-
-        self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
-        self.init_page_selectors_by_game()
-
     def solve_captchas(self):
         self.load_all_nfts()
         self.scroll_to_top()
         self.driver.implicitly_wait(40)
         self.filter_nfts_to_run()
         self.get_nft_fuel_elements()
-        self.rewards_for_the_day = [0 for _ in range(len(self.start_buttons))]
-        self.start_buttons = enumerate(self.start_buttons)
 
-        for index, button in self.start_buttons:
-            remaining, total = get_current_nft_fuel(self.nft_fuel_spans[index].text)
-            while remaining > 0:
-                print("Current nft fuel {}/{}; {} time(s) remaining".format(remaining, total, (remaining / 15)))
-                self.set_vertical_scroll(button)
-                time.sleep(1)
-                button.click()
+        for nft in self.nfts:
+            while nft.total_fuel:
+                print("Current nft fuel {}/{}; {} time(s) remaining".format(
+                    nft.fuel, nft.total_fuel, (nft.fuel / 15)
+                ))
+                self.set_vertical_scroll(nft)
+                nft.start_race()
                 try:
                     form = self.driver.find_element(By.XPATH, '//form')
-                    captcha_name = 'captcha{}.png'.format(index)
+                    captcha_name = 'captcha{}.png'.format(nft.index)
                     save_captcha(form, captcha_name)
                     solved = self.input_answer_into_form(form, captcha_name)
                     if solved:
-                        self.close_modal(index)
+                        self.close_modal(nft.index)
                 except Exception as e:
                     print("something went wrong while solving captchas {}".format(e))
 
-                remaining, total = get_current_nft_fuel(self.nft_fuel_spans[index].text)
+                nft.reduce_fuel()
 
-        print_rewards_for_the_day(self.rewards_for_the_day)
+        self.print_rewards_for_the_day()
         remove_images()
 
     def input_answer_into_form(self, form, captcha_name):
@@ -139,7 +129,7 @@ class CaptchaSolver:
             )
             if len(close_btns):
                 close_btns[-1].click()
-                self.rewards_for_the_day[index] += self.get_rewards_from_html()
+                self.nfts[index].rewards += self.get_rewards_from_html()
                 time.sleep(1)
         except TimeoutException:
             print("can't find the close button")
@@ -152,18 +142,20 @@ class CaptchaSolver:
 
     def get_nft_fuel_elements(self):
         all_nft_fuel_spans = self.driver.find_elements(By.XPATH, '//span[text()="Fuel: "]')
+        all_nft_fuel_spans = all_nft_fuel_spans[-len(self.nfts):]
 
-        for fuel_span in all_nft_fuel_spans:
+        for index, fuel_span in enumerate(all_nft_fuel_spans):
             remaining, total = get_current_nft_fuel(fuel_span.text)
             if remaining > 0:
-                self.nft_fuel_spans.append(fuel_span)
+                self.nfts[index].set_fuel(remaining, total)
 
     def filter_nfts_to_run(self):
         all_start_buttons = self.driver.find_elements(By.CSS_SELECTOR, self.start_btn)
 
-        for button in all_start_buttons:
+        for index, button in enumerate(all_start_buttons):
             if "start" in button.text.lower() and button.is_enabled():
-                self.start_buttons.append(button)
+                nft = NFT(button, index)
+                self.nfts.append(nft)
 
     def init_page_selectors_by_game(self):
         if "planes" in self.game:
@@ -226,6 +218,13 @@ class CaptchaSolver:
                 button.click()
                 time.sleep(1)
 
+    def print_rewards_for_the_day(self):
+        if len(self.nfts):
+            total = sum([nft.rewards for nft in self.nfts])
+            print("Rewards for the {} with an average of {}".format(total, int(total / len(self.nfts))))
+        else:
+            print("No nfts to race")
+
 
 if __name__ == '__main__':
-    solve_captchas("planes", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
+    solve_captchas("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')

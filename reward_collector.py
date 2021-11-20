@@ -2,13 +2,13 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-
-import time
-import subprocess
-
 from selenium.webdriver.support.expected_conditions import presence_of_element_located
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
+from models.nft import NFT
+
+import time
+import subprocess
 
 
 def collect_game_rewards(game, chrome_path):
@@ -30,6 +30,15 @@ def collect_game_rewards(game, chrome_path):
     driver.close()
 
 
+def claim_first_reward(claim_buttons):
+    if len(claim_buttons):
+        current_reward = claim_buttons[0]
+        if "fee" in current_reward.get_attribute('innerHTML').lower():
+            print("skipping car reward not ready")
+        else:
+            current_reward.click()
+
+
 class RewardCollector:
     def __init__(self, driver, game):
         self.driver = driver
@@ -38,6 +47,7 @@ class RewardCollector:
         self.close_button = '.close-btn'
         self.rewards_section = '.rewards-section'
         self.reward_buttons = []
+        self.nfts = []
 
         self.init_page_selectors_by_game(game)
 
@@ -46,17 +56,15 @@ class RewardCollector:
         self.load_all_nfts()
         self.scroll_to_top()
         self.get_all_claimable_rewards()
-        self.reward_buttons = enumerate(self.reward_buttons)
 
-        for index, button in self.reward_buttons:
+        for nft in self.nfts:
             for num in range(2):
-                self.set_vertical_scroll(button)
-                time.sleep(1)
-                button.click()
+                self.set_vertical_scroll(nft.button)
+                nft.start_race()
                 try:
                     all_rewards = self.driver.find_element(By.CSS_SELECTOR, self.rewards_section)
                     claim_buttons = all_rewards.find_elements(By.CSS_SELECTOR, self.btn_class)
-                    RewardCollector.claim_first_reward(claim_buttons)
+                    claim_first_reward(claim_buttons)
                     time.sleep(1)
                 except NoSuchElementException:
                     print("skipping car reward not ready")
@@ -78,11 +86,11 @@ class RewardCollector:
     def get_all_claimable_rewards(self):
         all_reward_buttons = self.driver.find_elements(By.CSS_SELECTOR, self.btn_class)
 
-        for button in all_reward_buttons:
+        for index, button in enumerate(all_reward_buttons):
             if "of sold cars" in button.text.lower():
                 continue
             if "rewards" in button.text.lower():
-                self.reward_buttons.append(button)
+                self.nfts.append(NFT(button, index))
 
     def init_page_selectors_by_game(self, game):
         if "planes" in game:
@@ -106,15 +114,6 @@ class RewardCollector:
     def scroll_to_top(self):
         self.driver.execute_script("window.scroll(0, 0);")
         time.sleep(1)
-
-    @staticmethod
-    def claim_first_reward(claim_buttons):
-        if len(claim_buttons):
-            current_reward = claim_buttons[0]
-            if "fee" in current_reward.get_attribute('innerHTML').lower():
-                print("skipping car reward not ready")
-            else:
-                current_reward.click()
 
 
 if __name__ == '__main__':
