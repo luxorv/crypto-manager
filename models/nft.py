@@ -15,7 +15,7 @@ class NFT:
         self.index = index
 
     def reduce_fuel(self):
-        self.total_fuel -= 15
+        self.fuel -= 15
 
     def set_fuel(self, fuel, total):
         self.total_fuel = total
@@ -24,4 +24,3 @@ class NFT:
     def start_race(self):
         time.sleep(1)
         self.button.click()
-

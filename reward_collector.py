@@ -105,7 +105,14 @@ class RewardCollector:
                 load_more = WebDriverWait(self.driver, 3).until(
                     presence_of_element_located((By.XPATH, self.load_more_selector))
                 )
-                load_more.location_once_scrolled_into_view
+                self.driver.execute_script("""
+                    let scrollHeight = Math.max(
+                        document.body.scrollHeight, document.documentElement.scrollHeight,
+                        document.body.offsetHeight, document.documentElement.offsetHeight,
+                        document.body.clientHeight, document.documentElement.clientHeight
+                    );
+                    window.scroll(0, scrollHeight);
+                """)
                 time.sleep(2)
                 load_more.click()
             except TimeoutException:
@@ -117,4 +124,5 @@ class RewardCollector:
 
 
 if __name__ == '__main__':
+    collect_game_rewards("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
     collect_game_rewards("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
