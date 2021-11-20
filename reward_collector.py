@@ -118,4 +118,4 @@ class RewardCollector:
 
 
 if __name__ == '__main__':
-    collect_game_rewards("planes", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
+    collect_game_rewards("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')

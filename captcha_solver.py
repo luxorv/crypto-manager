@@ -71,7 +71,7 @@ class CaptchaSolver:
             '5th': 0.0
         }
 
-        api_key = '83e92dace76375a049e6ffd331721ec2'
+        api_key = '<your-key-here>'
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
         self.init_page_selectors_by_game()
