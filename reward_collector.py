@@ -60,7 +60,7 @@ class RewardCollector:
         for nft in self.nfts:
             for num in range(2):
                 self.set_vertical_scroll(nft.button)
-                nft.start_race()
+                nft.start_action()
                 try:
                     all_rewards = self.driver.find_element(By.CSS_SELECTOR, self.rewards_section)
                     claim_buttons = all_rewards.find_elements(By.CSS_SELECTOR, self.btn_class)
@@ -124,5 +124,5 @@ class RewardCollector:
 
 
 if __name__ == '__main__':
-    collect_game_rewards("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
+    # collect_game_rewards("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
     collect_game_rewards("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')

@@ -55,7 +55,7 @@ class CaptchaSolver:
         self.nfts = []
         self.game = game
 
-        api_key = '83e92dace76375a049e6ffd331721ec2'
+        api_key = '<your-api-key>'
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
         self.init_page_selectors_by_game()
@@ -71,7 +71,7 @@ class CaptchaSolver:
     def solve_captchas(self):
         self.load_all_nfts()
         self.scroll_to_top()
-        self.driver.implicitly_wait(40)
+        self.driver.implicitly_wait(4)
         self.filter_nfts_to_run()
         self.get_nft_fuel_elements()
 
@@ -81,7 +81,7 @@ class CaptchaSolver:
                     nft.fuel, nft.total_fuel, (nft.fuel / 15)
                 ))
                 self.set_vertical_scroll(nft.button)
-                nft.start_race()
+                nft.start_action()
                 try:
                     form = self.driver.find_element(By.XPATH, '//form')
                     captcha_name = 'captcha{}.png'.format(nft.index)
@@ -123,16 +123,18 @@ class CaptchaSolver:
         self.driver.execute_script("window.scrollTo(0, {});".format(vertical_location))
 
     def close_modal(self, index):
-        try:
-            close_btns = WebDriverWait(self.driver, 40).until(
-                presence_of_all_elements_located((By.CSS_SELECTOR, self.close_button))
-            )
-            if len(close_btns):
-                close_btns[-1].click()
-                self.nfts[index].rewards += self.get_rewards_from_html()
-                time.sleep(1)
-        except TimeoutException:
-            print("can't find the close button")
+        while True:
+            try:
+                close_btns = WebDriverWait(self.driver, 5).until(
+                    presence_of_all_elements_located((By.CSS_SELECTOR, self.close_button))
+                )
+                if len(close_btns):
+                    self.nfts[index].rewards += self.get_rewards_from_html()
+                    close_btns[-1].click()
+                    time.sleep(1)
+                    break
+            except TimeoutException:
+                print("can't find the close button")
 
     def get_rewards_from_html(self):
         if 'planes' in self.game:
@@ -234,5 +236,5 @@ class CaptchaSolver:
 
 
 if __name__ == '__main__':
-    solve_captchas("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
+    # solve_captchas("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
     solve_captchas("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')

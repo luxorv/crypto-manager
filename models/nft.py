@@ -21,6 +21,6 @@ class NFT:
         self.total_fuel = total
         self.fuel = fuel
 
-    def start_race(self):
+    def start_action(self):
         time.sleep(1)
         self.button.click()
