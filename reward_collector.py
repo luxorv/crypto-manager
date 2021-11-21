@@ -37,6 +37,7 @@ def claim_first_reward(claim_buttons):
             print("skipping car reward not ready")
         else:
             current_reward.click()
+            time.sleep(1)
 
 
 class RewardCollector:
@@ -61,6 +62,7 @@ class RewardCollector:
             for num in range(2):
                 self.set_vertical_scroll(nft.button)
                 nft.start_action()
+                time.sleep(1)
                 try:
                     all_rewards = self.driver.find_element(By.CSS_SELECTOR, self.rewards_section)
                     claim_buttons = all_rewards.find_elements(By.CSS_SELECTOR, self.btn_class)
@@ -124,5 +126,6 @@ class RewardCollector:
 
 
 if __name__ == '__main__':
-    # collect_game_rewards("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
-    collect_game_rewards("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
+    # collect_game_rewards("planes", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
+    # collect_game_rewards("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
+    collect_game_rewards("cars", '/usr/bin/google-chrome')

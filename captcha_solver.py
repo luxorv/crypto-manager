@@ -55,7 +55,7 @@ class CaptchaSolver:
         self.nfts = []
         self.game = game
 
-        api_key = '<your-api-key>'
+        api_key = 'you-api-key'
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
         self.init_page_selectors_by_game()
@@ -81,8 +81,8 @@ class CaptchaSolver:
                     nft.fuel, nft.total_fuel, (nft.fuel / 15)
                 ))
                 self.set_vertical_scroll(nft.button)
-                nft.start_action()
                 try:
+                    nft.start_action()
                     form = self.driver.find_element(By.XPATH, '//form')
                     captcha_name = 'captcha{}.png'.format(nft.index)
                     save_captcha(form, captcha_name)
@@ -125,14 +125,15 @@ class CaptchaSolver:
     def close_modal(self, index):
         while True:
             try:
-                close_btns = WebDriverWait(self.driver, 5).until(
+                close_btns = WebDriverWait(self.driver, 20).until(
                     presence_of_all_elements_located((By.CSS_SELECTOR, self.close_button))
                 )
-                if len(close_btns):
-                    self.nfts[index].rewards += self.get_rewards_from_html()
-                    close_btns[-1].click()
-                    time.sleep(1)
-                    break
+                for close_button in close_btns:
+                    if close_button.is_enabled():
+                        self.nfts[index].rewards += self.get_rewards_from_html()
+                        close_button.click()
+                        time.sleep(1)
+                        return
             except TimeoutException:
                 print("can't find the close button")
 
@@ -236,5 +237,6 @@ class CaptchaSolver:
 
 
 if __name__ == '__main__':
-    # solve_captchas("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
-    solve_captchas("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
+    # solve_captchas("planes", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
+    # solve_captchas("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
+    solve_captchas("planes", '/usr/bin/google-chrome')
