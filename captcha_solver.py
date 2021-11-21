@@ -55,7 +55,7 @@ class CaptchaSolver:
         self.nfts = []
         self.game = game
 
-        api_key = 'aed874dd03de5cb01eb81f86a7d492dc'
+        api_key = '<>'
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
         self.init_page_selectors_by_game()
@@ -84,17 +84,16 @@ class CaptchaSolver:
                 ))
                 self.set_vertical_scroll(nft.button)
                 try:
-                    if not solved:
+                    if solved:
+                        solved = not self.close_modal(nft.index)
+                        nft.reduce_fuel()
+                        print("closing the modal")
+                    else:
                         nft.start_action()
                         form = self.driver.find_element(By.XPATH, '//form')
                         captcha_name = 'captcha{}.png'.format(nft.index)
                         save_captcha(form, captcha_name)
                         solved = self.input_answer_into_form(form, captcha_name)
-                    if solved:
-                        self.close_modal(nft.index)
-                        nft.reduce_fuel()
-                        solved = False
-                        print("closing the modal")
                 except Exception as e:
                     print("something went wrong while solving captchas {}".format(e))
 
@@ -129,7 +128,7 @@ class CaptchaSolver:
     def close_modal(self, index):
         while True:
             try:
-                close_btns = WebDriverWait(self.driver, 20).until(
+                close_btns = WebDriverWait(self.driver, 40, poll_frequency=10).until(
                     presence_of_all_elements_located((By.CSS_SELECTOR, self.close_button))
                 )
                 if len(close_btns):
@@ -137,9 +136,10 @@ class CaptchaSolver:
                         self.nfts[index].rewards += self.get_rewards_from_html()
                         close_btns[-1].click()
                         time.sleep(1)
-                        return
+                        return True
             except TimeoutException:
                 print("can't find the close button")
+        return False
 
     def get_rewards_from_html(self):
         if 'planes' in self.game:
