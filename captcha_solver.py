@@ -55,7 +55,7 @@ class CaptchaSolver:
         self.nfts = []
         self.game = game
 
-        api_key = 'you-api-key'
+        api_key = 'aed874dd03de5cb01eb81f86a7d492dc'
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
         self.init_page_selectors_by_game()
@@ -74,25 +74,29 @@ class CaptchaSolver:
         self.driver.implicitly_wait(4)
         self.filter_nfts_to_run()
         self.get_nft_fuel_elements()
+        solved = False
 
-        for nft in self.nfts:
+        for index, nft in enumerate(self.nfts):
+            nft.index = index
             while nft.fuel:
                 print("Current nft fuel {}/{}; {} time(s) remaining".format(
                     nft.fuel, nft.total_fuel, (nft.fuel / 15)
                 ))
                 self.set_vertical_scroll(nft.button)
                 try:
-                    nft.start_action()
-                    form = self.driver.find_element(By.XPATH, '//form')
-                    captcha_name = 'captcha{}.png'.format(nft.index)
-                    save_captcha(form, captcha_name)
-                    solved = self.input_answer_into_form(form, captcha_name)
+                    if not solved:
+                        nft.start_action()
+                        form = self.driver.find_element(By.XPATH, '//form')
+                        captcha_name = 'captcha{}.png'.format(nft.index)
+                        save_captcha(form, captcha_name)
+                        solved = self.input_answer_into_form(form, captcha_name)
                     if solved:
                         self.close_modal(nft.index)
+                        nft.reduce_fuel()
+                        solved = False
+                        print("closing the modal")
                 except Exception as e:
                     print("something went wrong while solving captchas {}".format(e))
-
-                nft.reduce_fuel()
 
         self.print_rewards_for_the_day()
         remove_images()
@@ -128,10 +132,10 @@ class CaptchaSolver:
                 close_btns = WebDriverWait(self.driver, 20).until(
                     presence_of_all_elements_located((By.CSS_SELECTOR, self.close_button))
                 )
-                for close_button in close_btns:
-                    if close_button.is_enabled():
+                if len(close_btns):
+                    if close_btns[-1].is_enabled():
                         self.nfts[index].rewards += self.get_rewards_from_html()
-                        close_button.click()
+                        close_btns[-1].click()
                         time.sleep(1)
                         return
             except TimeoutException:
@@ -157,8 +161,11 @@ class CaptchaSolver:
 
         for index, button in enumerate(all_start_buttons):
             if "start" in button.text.lower() and button.is_enabled():
-                nft = NFT(button, index)
+                print(button.text.lower())
+                nft = NFT(button)
                 self.nfts.append(nft)
+
+        print(len(self.nfts))
 
     def init_page_selectors_by_game(self):
         if "planes" in self.game:
@@ -237,6 +244,6 @@ class CaptchaSolver:
 
 
 if __name__ == '__main__':
-    # solve_captchas("planes", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
+    solve_captchas("planes", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
     # solve_captchas("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
-    solve_captchas("planes", '/usr/bin/google-chrome')
+    # solve_captchas("planes", '/usr/bin/google-chrome')

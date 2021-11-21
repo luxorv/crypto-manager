@@ -7,12 +7,12 @@ def get_current_nft_fuel(fuel_text):
 
 
 class NFT:
-    def __init__(self, button, index):
+    def __init__(self, button):
         self.button = button
         self.total_fuel = 60
         self.fuel = 0
         self.rewards = 0
-        self.index = index
+        self.index = 0
 
     def reduce_fuel(self):
         self.fuel -= 15
