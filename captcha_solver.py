@@ -55,7 +55,10 @@ class CaptchaSolver:
         self.nfts = []
         self.game = game
 
-        api_key = '<>'
+        api_key = ''
+
+        if not api_key:
+            raise Exception("Insert your 2Captcha API Key")
 
         self.solver = TwoCaptcha(api_key, defaultTimeout=160, pollingInterval=5)
         self.init_page_selectors_by_game()
@@ -90,6 +93,7 @@ class CaptchaSolver:
                         print("closing the modal")
                     else:
                         nft.start_action()
+                        time.sleep(1)
                         form = self.driver.find_element(By.XPATH, '//form')
                         captcha_name = 'captcha{}.png'.format(nft.index)
                         save_captcha(form, captcha_name)

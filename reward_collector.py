@@ -58,7 +58,8 @@ class RewardCollector:
         self.scroll_to_top()
         self.get_all_claimable_rewards()
 
-        for nft in self.nfts:
+        for index, nft in enumerate(self.nfts):
+            nft.index = index
             for num in range(2):
                 self.set_vertical_scroll(nft.button)
                 nft.start_action()
@@ -92,7 +93,7 @@ class RewardCollector:
             if "of sold cars" in button.text.lower():
                 continue
             if "rewards" in button.text.lower():
-                self.nfts.append(NFT(button, index))
+                self.nfts.append(NFT(button))
 
     def init_page_selectors_by_game(self, game):
         if "planes" in game:
@@ -126,6 +127,6 @@ class RewardCollector:
 
 
 if __name__ == '__main__':
-    # collect_game_rewards("planes", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
+    collect_game_rewards("cars", r'"C:\Program Files\Google\Chrome\Application\chrome.exe"')
     # collect_game_rewards("cars", '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome')
-    collect_game_rewards("cars", '/usr/bin/google-chrome')
+    # collect_game_rewards("cars", '/usr/bin/google-chrome')
