@@ -101,7 +101,6 @@ class CaptchaSolver:
                     print("something went wrong while solving captchas {}".format(e))
 
         self.print_rewards_for_the_day()
-        remove_images()
 
     def input_answer_into_form(self, form, image):
         answer = self.solve_single_captcha(image)
