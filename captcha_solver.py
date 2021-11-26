@@ -32,9 +32,9 @@ def solve_captchas(game, chrome_path):
     driver.close()
 
 
-def save_captcha(form, captcha_name):
+def save_captcha(form):
     image_element = form.find_element(By.XPATH, "//*[local-name() = 'svg']")
-    image_element.screenshot(captcha_name)
+    return image_element.screenshot_as_base64
 
 
 def remove_images():
@@ -95,17 +95,16 @@ class CaptchaSolver:
                         nft.start_action()
                         time.sleep(1)
                         form = self.driver.find_element(By.XPATH, '//form')
-                        captcha_name = 'captcha{}.png'.format(nft.index)
-                        save_captcha(form, captcha_name)
-                        solved = self.input_answer_into_form(form, captcha_name)
+                        image = save_captcha(form)
+                        solved = self.input_answer_into_form(form, image)
                 except Exception as e:
                     print("something went wrong while solving captchas {}".format(e))
 
         self.print_rewards_for_the_day()
         remove_images()
 
-    def input_answer_into_form(self, form, captcha_name):
-        answer = self.solve_single_captcha(captcha_name)
+    def input_answer_into_form(self, form, image):
+        answer = self.solve_single_captcha(image)
         print(answer)
         if not answer:
             self.close_captcha_modal()
@@ -116,10 +115,10 @@ class CaptchaSolver:
 
         return self.failed_toaster_exists()
 
-    def solve_single_captcha(self, captcha_name):
+    def solve_single_captcha(self, image):
         result = None
         try:
-            result = self.solver.normal(captcha_name)
+            result = self.solver.normal(image)
         except TimeoutException:
             print("could not solve captcha")
         return result
@@ -228,7 +227,7 @@ class CaptchaSolver:
     def get_rewards_from_cars(self):
         reward_section = self.driver.find_element(By.CSS_SELECTOR, '.result-success')
         reward_place = reward_section.get_attribute('innerHTML')
-        print(reward_place)
+        print(reward_place, self.reward_map[reward_place.lower()])
         return self.reward_map[reward_place.lower()]
 
     def close_captcha_modal(self):
