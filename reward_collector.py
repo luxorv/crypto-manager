@@ -65,14 +65,17 @@ class RewardCollector:
                 nft.start_action()
                 time.sleep(1)
                 try:
+                    self.get_rewards_for_nft(nft.index)
                     all_rewards = self.driver.find_element(By.CSS_SELECTOR, self.rewards_section)
                     claim_buttons = all_rewards.find_elements(By.CSS_SELECTOR, self.btn_class)
                     claim_first_reward(claim_buttons)
                     time.sleep(1)
                 except NoSuchElementException:
-                    print("skipping car reward not ready")
+                    print("skipping nft reward not ready")
 
                 self.close_modal()
+
+        self.print_rewards_from_nfts()
 
     def set_vertical_scroll(self, button):
         height = self.driver.get_window_size()['height']
@@ -102,6 +105,11 @@ class RewardCollector:
             self.close_button = "[aria-label='Close']"
             self.rewards_section = '.rewards-body'
 
+    def get_rewards_for_nft(self, nft_index):
+        reward_tokens = self.driver.find_elements(By.CSS_SELECTOR, '.reward-token')
+        reward_positions = self.driver.find_elements(By.CSS_SELECTOR, '.reward-position')
+        self.nfts[nft_index].parse_rewards(reward_positions, reward_tokens)
+
     def load_all_nfts(self):
         while True:
             try:
@@ -124,6 +132,11 @@ class RewardCollector:
     def scroll_to_top(self):
         self.driver.execute_script("window.scroll(0, 0);")
         time.sleep(1)
+
+    def print_rewards_from_nfts(self):
+        for reward_day in range(len(self.nfts[-1].rewards)):
+            total = sum(nft.total_rewards(reward_day) for nft in self.nfts)
+            print(total, total/len(self.nfts))
 
 
 if __name__ == '__main__':
