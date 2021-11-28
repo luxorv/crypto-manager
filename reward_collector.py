@@ -5,7 +5,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.expected_conditions import presence_of_element_located
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
-from models.nft import NFT
+from models.nft import NFT, get_current_nft_fuel
 
 import time
 import subprocess
@@ -47,8 +47,10 @@ class RewardCollector:
         self.load_more_selector = '//button[text()="Load More"]'
         self.close_button = '.close-btn'
         self.rewards_section = '.rewards-section'
+        self.reward_position = 'td.uppercase.position-relative'
         self.reward_buttons = []
         self.nfts = []
+        self.game = game
 
         self.init_page_selectors_by_game(game)
 
@@ -57,6 +59,7 @@ class RewardCollector:
         self.load_all_nfts()
         self.scroll_to_top()
         self.get_all_claimable_rewards()
+        self.get_nft_fuel_elements()
 
         for index, nft in enumerate(self.nfts):
             nft.index = index
@@ -104,11 +107,11 @@ class RewardCollector:
             self.load_more_selector = '//span[text()="Load More"]'
             self.close_button = "[aria-label='Close']"
             self.rewards_section = '.rewards-body'
+            self.reward_position = '.reward-position'
 
     def get_rewards_for_nft(self, nft_index):
-        reward_tokens = self.driver.find_elements(By.CSS_SELECTOR, '.reward-token')
-        reward_positions = self.driver.find_elements(By.CSS_SELECTOR, '.reward-position')
-        self.nfts[nft_index].parse_rewards(reward_positions, reward_tokens)
+        reward_positions = self.driver.find_elements(By.CSS_SELECTOR, self.reward_position)
+        self.nfts[nft_index].parse_rewards(reward_positions, self.game)
 
     def load_all_nfts(self):
         while True:
@@ -134,9 +137,18 @@ class RewardCollector:
         time.sleep(1)
 
     def print_rewards_from_nfts(self):
-        for reward_day in range(len(self.nfts[-1].rewards)):
+        for reward_day in range(len(self.nfts[0].rewards)):
             total = sum(nft.total_rewards(reward_day) for nft in self.nfts)
             print(total, total/len(self.nfts))
+
+    def get_nft_fuel_elements(self):
+        all_nft_fuel_spans = self.driver.find_elements(By.XPATH, '//span[text()="Fuel: "]')
+        all_nft_fuel_spans = all_nft_fuel_spans[-len(self.nfts):]
+
+        for index, fuel_span in enumerate(all_nft_fuel_spans):
+            remaining, total = get_current_nft_fuel(fuel_span.text)
+            if remaining > 0:
+                self.nfts[index].set_fuel(remaining, total)
 
 
 if __name__ == '__main__':
