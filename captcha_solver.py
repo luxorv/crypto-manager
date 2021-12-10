@@ -88,7 +88,7 @@ class CaptchaSolver:
                 self.set_vertical_scroll(nft.button)
                 try:
                     if solved:
-                        solved = not self.close_modal(nft.index)
+                        solved = not self.close_modal()
                         nft.reduce_fuel()
                         print("closing the modal")
                     else:
@@ -99,8 +99,6 @@ class CaptchaSolver:
                         solved = self.input_answer_into_form(form, image)
                 except Exception as e:
                     print("something went wrong while solving captchas {}".format(e))
-
-        self.print_rewards_for_the_day()
 
     def input_answer_into_form(self, form, image):
         answer = self.solve_single_captcha(image)
@@ -127,7 +125,7 @@ class CaptchaSolver:
         vertical_location = button.location['y'] - (height/2)
         self.driver.execute_script("window.scrollTo(0, {});".format(vertical_location))
 
-    def close_modal(self, index):
+    def close_modal(self):
         while True:
             try:
                 close_btns = WebDriverWait(self.driver, 40, poll_frequency=10).until(
@@ -135,7 +133,6 @@ class CaptchaSolver:
                 )
                 if len(close_btns):
                     if close_btns[-1].is_enabled():
-                        self.nfts[index].rewards += self.get_rewards_from_html()
                         close_btns[-1].click()
                         time.sleep(1)
                         return True
@@ -236,13 +233,6 @@ class CaptchaSolver:
             if 'cancel' in button.text.lower():
                 button.click()
                 time.sleep(1)
-
-    def print_rewards_for_the_day(self):
-        if len(self.nfts):
-            total = sum([nft.rewards for nft in self.nfts])
-            print("Rewards for the {} with an average of {}".format(total, int(total / len(self.nfts))))
-        else:
-            print("No nfts to race")
 
 
 if __name__ == '__main__':

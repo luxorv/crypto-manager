@@ -137,9 +137,14 @@ class RewardCollector:
         time.sleep(1)
 
     def print_rewards_from_nfts(self):
-        for reward_day in range(len(self.nfts[0].rewards)):
-            total = sum(nft.total_rewards(reward_day) for nft in self.nfts)
-            print(total, total/len(self.nfts))
+        if len(self.nfts):
+            accumulated_sum = 0
+            for reward_day in range(len(self.nfts[0].rewards)):
+                total = sum(nft.total_rewards(reward_day) for nft in self.nfts)
+                accumulated_sum += total
+                print("Total rewards {} with an average of {} and up now {}"
+                      .format(total, total/len(self.nfts), accumulated_sum)
+                )
 
     def get_nft_fuel_elements(self):
         all_nft_fuel_spans = self.driver.find_elements(By.XPATH, '//span[text()="Fuel: "]')
