@@ -34,7 +34,7 @@ def claim_first_reward(claim_buttons):
     if len(claim_buttons):
         current_reward = claim_buttons[0]
         if "fee" in current_reward.get_attribute('innerHTML').lower():
-            print("skipping car reward not ready")
+            return
         else:
             current_reward.click()
             time.sleep(1)
@@ -57,7 +57,6 @@ class RewardCollector:
     def collect_rewards(self):
         self.driver.implicitly_wait(4)
         self.load_all_nfts()
-        self.scroll_to_top()
         self.get_all_claimable_rewards()
         self.get_nft_fuel_elements()
 
@@ -139,12 +138,25 @@ class RewardCollector:
     def print_rewards_from_nfts(self):
         if len(self.nfts):
             accumulated_sum = 0
-            for reward_day in range(len(self.nfts[0].rewards)):
-                total = sum(nft.total_rewards(reward_day) for nft in self.nfts)
+            for reward_day in range(len(self.nfts[-1].rewards)):
+                total = sum(nft.total_rewards(reward_day) for nft in self.nfts if reward_day < len(nft.rewards))
                 accumulated_sum += total
-                print("Total rewards {} with an average of {} and up now {}"
-                      .format(total, total/len(self.nfts), accumulated_sum)
-                )
+                print(
+                    "Total rewards {} with an average of {:.2f} and up now {}".format(
+                        total, total/len(self.nfts), accumulated_sum
+                    ))
+
+    def print_rewards(self):
+        accumulated_sum = 0
+        for nft in self.nfts:
+            total = 0
+            for index in range(len(nft.rewards)):
+                total += nft.total_rewards(index)
+            accumulated_sum += total
+            print(
+                "Total rewards {} with an average of {} and up now {}".format(
+                    total, total/len(self.nfts), accumulated_sum
+                ))
 
     def get_nft_fuel_elements(self):
         all_nft_fuel_spans = self.driver.find_elements(By.XPATH, '//span[text()="Fuel: "]')

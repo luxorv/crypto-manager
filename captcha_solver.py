@@ -55,7 +55,7 @@ class CaptchaSolver:
         self.nfts = []
         self.game = game
 
-        api_key = ''
+        api_key = '6c3ecd708935eb1f87748772b2fe744f'
 
         if not api_key:
             raise Exception("Insert your 2Captcha API Key")
@@ -81,10 +81,17 @@ class CaptchaSolver:
 
         for index, nft in enumerate(self.nfts):
             nft.index = index
+            start_time = time.time()
+            previous_fuel = nft.fuel
             while nft.fuel:
                 print("Current nft fuel {}/{}; {} time(s) remaining".format(
                     nft.fuel, nft.total_fuel, (nft.fuel / 15)
                 ))
+                # if previous_fuel == nft.fuel:
+                #     end_time = time.time()
+                #     print("Current time: {}".format(end_time - start_time))
+                #     if (end_time - start_time) > 4000:
+                #         solved = False
                 self.set_vertical_scroll(nft.button)
                 try:
                     if solved:
@@ -97,8 +104,8 @@ class CaptchaSolver:
                         form = self.driver.find_element(By.XPATH, '//form')
                         image = save_captcha(form)
                         solved = self.input_answer_into_form(form, image)
-                except Exception as e:
-                    print("something went wrong while solving captchas {}".format(e))
+                except Exception:
+                    print("something went wrong while solving captchas")
 
     def input_answer_into_form(self, form, image):
         answer = self.solve_single_captcha(image)
@@ -139,12 +146,6 @@ class CaptchaSolver:
             except TimeoutException:
                 print("can't find the close button")
         return False
-
-    def get_rewards_from_html(self):
-        if 'planes' in self.game:
-            return self.get_rewards_from_planes()
-        else:
-            return self.get_rewards_from_cars()
 
     def get_nft_fuel_elements(self):
         all_nft_fuel_spans = self.driver.find_elements(By.XPATH, '//span[text()="Fuel: "]')
@@ -205,26 +206,6 @@ class CaptchaSolver:
         except TimeoutException:
             print("can't find the toaster")
         return toaster is None or "invalid" not in toaster.text.lower()
-
-    def get_rewards_from_planes(self):
-        reward_btn = self.driver.find_element(By.CSS_SELECTOR, self.close_button)
-        reward_html = reward_btn.get_attribute('innerHTML')
-
-        if 'CPAN' not in reward_html:
-            return 0
-
-        rewards = reward_html.split('>')[1:]
-        for section in rewards:
-            if 'CPAN' in section:
-                return float(section.split('CPAN')[0].strip())
-
-        return 0
-
-    def get_rewards_from_cars(self):
-        reward_section = self.driver.find_element(By.CSS_SELECTOR, '.result-success')
-        reward_place = reward_section.get_attribute('innerHTML')
-        print(reward_place, self.reward_map[reward_place.lower()])
-        return self.reward_map[reward_place.lower()]
 
     def close_captcha_modal(self):
         buttons = self.driver.find_elements(By.CSS_SELECTOR, '.btn-red')
